@@ -3,6 +3,7 @@ import dotenv from "dotenv"
 import mongoose from "mongoose"
 import productRoutes from "./routes/productRoutes.js"
 import errorHandleMiddleware from "./middleware/error.js"
+import userRoutes from "./routes/userRoutes.js"
 
 dotenv.config()
 const port = process.env.PORT || 5000
@@ -15,7 +16,7 @@ app.use(express.json())
 // all routes
 
 app.use("/api/products", productRoutes)
-console.log("Product routes loaded...");
+app.use("/api/users", userRoutes)
 
 app.use(errorHandleMiddleware);
 
