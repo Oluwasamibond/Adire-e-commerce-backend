@@ -1,6 +1,7 @@
 import handleAsyncError from "../middleware/handleAsyncError.js";
 import User from "../models/userModel.js";
 import HandleError from "../utils/handleError.js";
+import { sendToken } from "../utils/jwtToken.js";
 
 // Register User
 export const registerUser = handleAsyncError(async (req, res, next) => {
@@ -15,12 +16,7 @@ export const registerUser = handleAsyncError(async (req, res, next) => {
         url: "profilepicUrl",
       },
     });
-    const token = user.getJWTToken();
-    res.status(201).json({
-      success: true,
-      user,
-      token
-    });
+    sendToken(user, 200, res);
   } catch (error) {
     res.status(400).json({
       success: false,
@@ -43,10 +39,22 @@ export const loginUser = handleAsyncError(async (req, res, next) => {
   if (!user) {
     return next(new HandleError("Invalid email or password", 401));
   }
-  const token = user.getJWTToken();
+  const isPasswordMatched = await user.verifyPassword(password);
+
+  if (!isPasswordMatched) {
+    return next(new HandleError("Invalid email or password", 401));
+  }
+  sendToken(user, 200, res);
+});
+
+// Logout User
+export const logoutUser = handleAsyncError(async (req, res, next) => {
+  res.cookie("token", null, {
+    expires: new Date(Date.now()),
+    httpOnly: true,
+  });
   res.status(200).json({
     success: true,
-    user,
-    token
+    message: "Logged out successfully",
   });
-});
+})
