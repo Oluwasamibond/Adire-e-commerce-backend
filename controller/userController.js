@@ -2,6 +2,7 @@ import handleAsyncError from "../middleware/handleAsyncError.js";
 import User from "../models/userModel.js";
 import HandleError from "../utils/handleError.js";
 import { sendToken } from "../utils/jwtToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // Register User
 export const registerUser = handleAsyncError(async (req, res, next) => {
@@ -57,4 +58,45 @@ export const logoutUser = handleAsyncError(async (req, res, next) => {
     success: true,
     message: "Logged out successfully",
   });
+})
+
+// Forgot Password
+export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return next(new HandleError("User not found with this email", 404));
+  }
+  let resetToken;
+  try {
+    resetToken = user.generatePasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+  } catch (error) {
+    return next(new HandleError(error.message, 500));
+  }
+
+  const resetPasswordURL = `http://localhost:8000/api/password/reset ${resetToken}`;
+  const message = `Your password reset token is as follow:\n\n${resetPasswordURL}\n\nIf you have not requested this email, then ignore it.`;
+
+  try {
+      await sendEmail({
+      email: user.email,
+      subject: `Adire By Mkz Password Recovery`,
+      message: message,
+    });
+    res.status(200).json({ 
+      success: true, 
+      message: `Email sent to ${user.email} successfully` 
+    });
+  } catch (error) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    return next(new HandleError(error.message, 500));
+  }
+})
+
+//Reset Password
+export const resetPassword = handleAsyncError(async (req, res, next) => {
+  const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+  
 })
