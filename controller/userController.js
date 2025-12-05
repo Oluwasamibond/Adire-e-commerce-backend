@@ -3,6 +3,7 @@ import User from "../models/userModel.js";
 import HandleError from "../utils/handleError.js";
 import { sendToken } from "../utils/jwtToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import crypto from "crypto";
 
 // Register User
 export const registerUser = handleAsyncError(async (req, res, next) => {
@@ -74,7 +75,7 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
     return next(new HandleError(error.message, 500));
   }
 
-  const resetPasswordURL = `http://localhost:8000/api/password/reset ${resetToken}`;
+  const resetPasswordURL = `http://localhost:8000/api/users/password/reset/${resetToken}`;
   const message = `Your password reset token is as follow:\n\n${resetPasswordURL}\n\nIf you have not requested this email, then ignore it.`;
 
   try {
@@ -97,6 +98,65 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
 
 //Reset Password
 export const resetPassword = handleAsyncError(async (req, res, next) => {
+  console.log(req.params.token);
   const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
-  
+  const user = await User.findOne({ 
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+  if (!user) {
+    return next(new HandleError("Password reset token is invalid or has been expired", 400));
+  }
+  const { password, confirmPassword } = req.body;
+  if (password !== confirmPassword) {
+    return next(new HandleError("Password does not match", 400));
+  } 
+  user.password = password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+  sendToken(user, 200, res);
+})
+
+// Get user details
+export const getUserDetails = handleAsyncError(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  res.status(200).json({
+    success: true,
+    user,
+  });
+})
+
+// Update user password
+export const updatePassword = handleAsyncError(async (req, res, next) => {
+    const {oldPassword, newPassword, confirmNewPassword} = req.body;
+    const user = await User.findById(req.user.id).select("+password");
+    const isPasswordMatched = await user.verifyPassword(oldPassword);
+    if (!isPasswordMatched) {
+      return next(new HandleError("Old password is incorrect", 400));
+    }
+    if (newPassword !== confirmNewPassword) {
+      return next(new HandleError("Password does not match", 400));
+    }
+    user.password = newPassword;
+    await user.save();
+    sendToken(user, 200, res);
+})
+
+// Updating user profile
+export const updateProfile = handleAsyncError(async (req, res, next) => {
+  const {name, email} = req.body;
+  const updateUserDetails = {
+    name,
+    email
+  }
+  const user = await User.findByIdAndUpdate(req.user.id, updateUserDetails, {
+    new: true,
+    runValidators: true,
+  })
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    user,
+  });
 })
