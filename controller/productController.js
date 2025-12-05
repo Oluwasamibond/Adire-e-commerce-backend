@@ -131,3 +131,19 @@ export const getSingleProduct = handleAsyncError(async (req, res, next) => {
     });
   }
 });
+
+// Admin -  Getting all products (for admin panel)
+export const getAdminProducts = handleAsyncError(async (req, res, next) => {
+  try {
+    const products = await Product.find();
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+})

@@ -59,7 +59,7 @@ export const logoutUser = handleAsyncError(async (req, res, next) => {
     success: true,
     message: "Logged out successfully",
   });
-})
+});
 
 // Forgot Password
 export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
@@ -79,14 +79,14 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
   const message = `Your password reset token is as follow:\n\n${resetPasswordURL}\n\nIf you have not requested this email, then ignore it.`;
 
   try {
-      await sendEmail({
+    await sendEmail({
       email: user.email,
       subject: `Adire By Mkz Password Recovery`,
       message: message,
     });
-    res.status(200).json({ 
-      success: true, 
-      message: `Email sent to ${user.email} successfully` 
+    res.status(200).json({
+      success: true,
+      message: `Email sent to ${user.email} successfully`,
     });
   } catch (error) {
     user.resetPasswordToken = undefined;
@@ -94,29 +94,37 @@ export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
     return next(new HandleError(error.message, 500));
   }
-})
+});
 
 //Reset Password
 export const resetPassword = handleAsyncError(async (req, res, next) => {
   console.log(req.params.token);
-  const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
-  const user = await User.findOne({ 
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  const user = await User.findOne({
     resetPasswordToken,
-    resetPasswordExpire: { $gt: Date.now() }
+    resetPasswordExpire: { $gt: Date.now() },
   });
   if (!user) {
-    return next(new HandleError("Password reset token is invalid or has been expired", 400));
+    return next(
+      new HandleError(
+        "Password reset token is invalid or has been expired",
+        400
+      )
+    );
   }
   const { password, confirmPassword } = req.body;
   if (password !== confirmPassword) {
     return next(new HandleError("Password does not match", 400));
-  } 
+  }
   user.password = password;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
   await user.save();
   sendToken(user, 200, res);
-})
+});
 
 // Get user details
 export const getUserDetails = handleAsyncError(async (req, res, next) => {
@@ -125,38 +133,59 @@ export const getUserDetails = handleAsyncError(async (req, res, next) => {
     success: true,
     user,
   });
-})
+});
 
 // Update user password
 export const updatePassword = handleAsyncError(async (req, res, next) => {
-    const {oldPassword, newPassword, confirmNewPassword} = req.body;
-    const user = await User.findById(req.user.id).select("+password");
-    const isPasswordMatched = await user.verifyPassword(oldPassword);
-    if (!isPasswordMatched) {
-      return next(new HandleError("Old password is incorrect", 400));
-    }
-    if (newPassword !== confirmNewPassword) {
-      return next(new HandleError("Password does not match", 400));
-    }
-    user.password = newPassword;
-    await user.save();
-    sendToken(user, 200, res);
-})
+  const { oldPassword, newPassword, confirmNewPassword } = req.body;
+  const user = await User.findById(req.user.id).select("+password");
+  const isPasswordMatched = await user.verifyPassword(oldPassword);
+  if (!isPasswordMatched) {
+    return next(new HandleError("Old password is incorrect", 400));
+  }
+  if (newPassword !== confirmNewPassword) {
+    return next(new HandleError("Password does not match", 400));
+  }
+  user.password = newPassword;
+  await user.save();
+  sendToken(user, 200, res);
+});
 
 // Updating user profile
 export const updateProfile = handleAsyncError(async (req, res, next) => {
-  const {name, email} = req.body;
+  const { name, email } = req.body;
   const updateUserDetails = {
     name,
-    email
-  }
+    email,
+  };
   const user = await User.findByIdAndUpdate(req.user.id, updateUserDetails, {
     new: true,
     runValidators: true,
-  })
+  });
   res.status(200).json({
     success: true,
     message: "Profile updated successfully",
     user,
   });
-})
+});
+
+// Admin - Getting user information
+export const getUsersList = handleAsyncError(async (req, res, next) => {
+  const users = await User.find();
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+// Admin - Getting single user details
+export const getSingleUser = handleAsyncError(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new HandleError("User not found", 404));
+  }
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
