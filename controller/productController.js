@@ -22,7 +22,7 @@ export const createProducts = handleAsyncError(async (req, res, next) => {
 
 // Get All Products
 export const getProducts = handleAsyncError(async (req, res, next) => {
-  const resultPerPage = 3;
+  const resultPerPage = 4;
   const apiFeatures = new APIFunctionality(Product.find(), req.query)
     .search()
     .filter();
@@ -35,7 +35,7 @@ export const getProducts = handleAsyncError(async (req, res, next) => {
   const totalPages = Math.ceil(ProductCount / resultPerPage);
   const page = Number(req.query.page) || 1;
 
-  if (page > totalPages && producytCount > 0) {
+  if (page > totalPages && ProductCount > 0) {
     return next(new HandleError("Page number exceeds total pages", 404));
   }
 
@@ -49,7 +49,7 @@ export const getProducts = handleAsyncError(async (req, res, next) => {
     }
     res.status(200).json({
       success: true,
-      products,
+      products: products || [],
       ProductCount,
       resultPerPage,
       totalPages,
