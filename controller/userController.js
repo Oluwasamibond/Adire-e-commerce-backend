@@ -4,11 +4,17 @@ import HandleError from "../utils/handleError.js";
 import { sendToken } from "../utils/jwtToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import crypto from "crypto";
+import cloudinary from "../config/cloudinary.js";
 
 // Register User
 export const registerUser = handleAsyncError(async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, avatar } = req.body;
+    const myCloud = await cloudinary.uploader.upload(avatar, {
+      folder: "avatars",
+      width: 150,
+      crop: "scale",
+    });
     const user = await User.create({
       name,
       email,
