@@ -21,7 +21,7 @@ router.post("/login", loginUser);
 router.post("/logout", logoutUser);
 router.post("/password/forgot", requestPasswordReset);
 router.post("/password/reset/:token", resetPassword);
-router.post("/profile", verifyUserAuth, getUserDetails);
+router.get("/profile", verifyUserAuth, getUserDetails);
 router.post("/password/update", verifyUserAuth, updatePassword);
 router.post("/profile/update", verifyUserAuth, updateProfile);
 
