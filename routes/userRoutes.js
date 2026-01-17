@@ -22,8 +22,8 @@ router.post("/logout", logoutUser);
 router.post("/password/forgot", requestPasswordReset);
 router.post("/password/reset/:token", resetPassword);
 router.get("/profile", verifyUserAuth, getUserDetails);
-router.post("/password/update", verifyUserAuth, updatePassword);
-router.post("/profile/update", verifyUserAuth, updateProfile);
+router.put("/password/update", verifyUserAuth, updatePassword);
+router.put("/profile/update", verifyUserAuth, updateProfile);
 
 // Admin routes can be added here
 router.get("/admin/users", verifyUserAuth, roleBasedAccess("admin"), getUsersList) 

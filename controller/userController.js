@@ -60,7 +60,8 @@ export const logoutUser = handleAsyncError(async (req, res, next) => {
 
 // Forgot Password
 export const requestPasswordReset = handleAsyncError(async (req, res, next) => {
-  const user = await User.findOne({ email: req.body.email });
+  const {email} = req.body
+  const user = await User.findOne({ email });
   if (!user) {
     return next(new HandleError("User not found with this email", 404));
   }
@@ -134,13 +135,13 @@ export const getUserDetails = handleAsyncError(async (req, res, next) => {
 
 // Update user password
 export const updatePassword = handleAsyncError(async (req, res, next) => {
-  const { oldPassword, newPassword, confirmNewPassword } = req.body;
+  const { oldPassword, newPassword, confirmPassword } = req.body;
   const user = await User.findById(req.user.id).select("+password");
   const isPasswordMatched = await user.verifyPassword(oldPassword);
   if (!isPasswordMatched) {
     return next(new HandleError("Old password is incorrect", 400));
   }
-  if (newPassword !== confirmNewPassword) {
+  if (newPassword !== confirmPassword) {
     return next(new HandleError("Password does not match", 400));
   }
   user.password = newPassword;
