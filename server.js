@@ -1,18 +1,35 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+
+console.log("ENV CHECK:", process.env.PAYSTACK_SECRET_KEY);
+
+import express from "express";
 import mongoose from "mongoose";
+
 import productRoutes from "./routes/productRoutes.js";
 import errorHandleMiddleware from "./middleware/error.js";
 import userRoutes from "./routes/userRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import paymentRoute from "./routes/paymentRoutes.js"
+import webhookRoutes from "./webhook/webhookRoutes.js"
 import cookieParser from "cookie-parser";
+import cors from "cors";
 
 
-dotenv.config();
+
 const port = process.env.PORT || 5000;
 const app = express();
 
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
 
+app.use(
+  "/api/webhook",
+  express.raw({ type: "application/json" }),
+  webhookRoutes
+);
 
 // Middleware
 app.use(express.json({ limit: "50mb" }));
@@ -25,6 +42,8 @@ app.use(cookieParser());
 app.use("/api/products", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payment", paymentRoute)
+
 
 app.use(errorHandleMiddleware);
 
