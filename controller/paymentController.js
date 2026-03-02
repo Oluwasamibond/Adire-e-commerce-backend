@@ -1,6 +1,6 @@
 import axios from "axios";
 import Order from "../models/orderModel.js";
-import Product from "../models/productModel.js"; // ✅ NEW
+import Product from "../models/productModel.js";
 import HandleError from "../utils/handleError.js";
 import handleAsyncError from "../middleware/handleAsyncError.js";
 
@@ -10,47 +10,71 @@ import handleAsyncError from "../middleware/handleAsyncError.js";
 export const initializePaystackPayment = handleAsyncError(
   async (req, res, next) => {
     const paystackKey = process.env.PAYSTACK_SECRET_KEY;
-    const { orderId } = req.body;
+    const {
+      orderItems,
+      shippingInfo,
+      itemsPrice,
+      taxPrice,
+      shippingPrice,
+      totalPrice,
+      userEmail,
+      userName,
+    } = req.body;
 
-    const order = await Order.findById(orderId).populate("user", "email name");
-
-    if (!order) {
-      return next(new HandleError("Order not found", 404));
+    // ✅ Validation
+    if (!orderItems || !orderItems.length) {
+      return next(new HandleError("No products in the order", 400));
     }
 
-    if (order.isPaid) {
-      return next(new HandleError("Order already paid", 400));
+    if (!userEmail || !userName || !shippingInfo || !totalPrice) {
+      return next(new HandleError("Incomplete order details", 400));
     }
 
+    // 1️⃣ Create order in DB first
+    const order = await Order.create({
+      user: req.user?._id,
+      orderItems,
+      shippingInfo,
+      itemsPrice,
+      taxPrice,
+      shippingPrice,
+      totalPrice,
+      isPaid: false,
+      paidAt: null, // will be set after successful payment
+      paymentInfo: {}, // placeholder
+    });
+
+    // 2️⃣ Initialize Paystack transaction
     const paystackResponse = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
-        email: order.user.email,
-        amount: Math.round(order.totalPrice * 100), // kobo
+        email: userEmail,
+        amount: Math.round(totalPrice * 100), // in kobo
         currency: "NGN",
         callback_url: process.env.PAYSTACK_CALLBACK_URL,
         metadata: {
           orderId: order._id.toString(),
-          userId: order.user._id.toString(),
+          userId: req.user?._id?.toString() || null,
         },
       },
       {
         headers: {
           Authorization: `Bearer ${paystackKey}`,
         },
-      },
+      }
     );
 
     res.status(200).json({
       success: true,
       authorization_url: paystackResponse.data.data.authorization_url,
       reference: paystackResponse.data.data.reference,
+      orderId: order._id,
     });
-  },
+  }
 );
 
 /**
- * Verify Paystack Payment (PAYMENT TRUTH LIVES HERE)
+ * Verify Paystack Payment
  */
 export const verifyPaystackPayment = handleAsyncError(
   async (req, res, next) => {
@@ -61,17 +85,15 @@ export const verifyPaystackPayment = handleAsyncError(
       return next(new HandleError("Payment reference required", 400));
     }
 
-    // 1️⃣ Verify payment with Paystack
+    // Verify payment with Paystack
     const { data } = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
       {
         headers: {
           Authorization: `Bearer ${paystackKey}`,
         },
-      },
+      }
     );
-
-    console.log("Paystack verify response:", data);
 
     const paymentData = data?.data;
 
@@ -79,7 +101,7 @@ export const verifyPaystackPayment = handleAsyncError(
       return next(new HandleError("Payment verification failed", 400));
     }
 
-    // 2️⃣ Get order from metadata
+    // Get order
     const orderId = paymentData.metadata?.orderId;
     const order = await Order.findById(orderId);
 
@@ -87,7 +109,6 @@ export const verifyPaystackPayment = handleAsyncError(
       return next(new HandleError("Order not found", 404));
     }
 
-    // 🛑 IMPORTANT: Prevent double processing
     if (order.isPaid) {
       return res.status(200).json({
         success: true,
@@ -96,38 +117,35 @@ export const verifyPaystackPayment = handleAsyncError(
       });
     }
 
-    // 3️⃣ Deduct stock (AFTER payment success)
+    // Deduct stock
     for (const item of order.orderItems) {
       const product = await Product.findById(item.product);
-
       if (!product) {
         return next(new HandleError("Product not found", 404));
       }
-
       if (product.stock < item.quantity) {
         return next(
-          new HandleError(`Not enough stock for ${product.name}`, 400),
+          new HandleError(`Not enough stock for ${product.name}`, 400)
         );
       }
-
       product.stock -= item.quantity;
       await product.save({ validateBeforeSave: false });
     }
 
-    // 4️⃣ Mark order as paid
+    // ✅ Update order after successful payment
     order.isPaid = true;
+    order.paidAt = Date.now();
     order.paymentInfo = {
-      reference: paymentData.reference,
+      id: paymentData.reference,
       status: paymentData.status,
     };
-    order.paidAt = Date.now();
 
     await order.save({ validateBeforeSave: false });
 
     res.status(200).json({
       success: true,
-      message: "Payment verified, stock updated, order confirmed",
+      message: "Payment verified and order confirmed",
       order,
     });
-  },
+  }
 );

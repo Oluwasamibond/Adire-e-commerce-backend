@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-console.log("ENV CHECK:", process.env.PAYSTACK_SECRET_KEY);
-
 import express from "express";
 import mongoose from "mongoose";
 
@@ -14,7 +12,6 @@ import paymentRoute from "./routes/paymentRoutes.js"
 import webhookRoutes from "./webhook/webhookRoutes.js"
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
 
 
 const port = process.env.PORT || 5000;
