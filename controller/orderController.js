@@ -26,7 +26,6 @@ export const createOrder = handleAsyncError(async (req, res, next) => {
     totalPrice,
     paidAt: Date.now(),
     user: req.user._id,
-    isPaid: false,
   });
   res.status(201).json({
     success: true,

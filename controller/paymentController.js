@@ -39,9 +39,11 @@ export const initializePaystackPayment = handleAsyncError(
       taxPrice,
       shippingPrice,
       totalPrice,
-      isPaid: false,
-      paidAt: null, // will be set after successful payment
-      paymentInfo: {}, // placeholder
+      orderStatus: "Processing",
+      paymentInfo: {
+        status: "Pending",
+        isPaid: false,
+      },
     });
 
     // 2️⃣ Initialize Paystack transaction
@@ -61,7 +63,7 @@ export const initializePaystackPayment = handleAsyncError(
         headers: {
           Authorization: `Bearer ${paystackKey}`,
         },
-      }
+      },
     );
 
     res.status(200).json({
@@ -70,7 +72,7 @@ export const initializePaystackPayment = handleAsyncError(
       reference: paystackResponse.data.data.reference,
       orderId: order._id,
     });
-  }
+  },
 );
 
 /**
@@ -92,7 +94,7 @@ export const verifyPaystackPayment = handleAsyncError(
         headers: {
           Authorization: `Bearer ${paystackKey}`,
         },
-      }
+      },
     );
 
     const paymentData = data?.data;
@@ -109,7 +111,7 @@ export const verifyPaystackPayment = handleAsyncError(
       return next(new HandleError("Order not found", 404));
     }
 
-    if (order.isPaid) {
+    if (order.paymentInfo?.isPaid) {
       return res.status(200).json({
         success: true,
         message: "Order already processed",
@@ -125,7 +127,7 @@ export const verifyPaystackPayment = handleAsyncError(
       }
       if (product.stock < item.quantity) {
         return next(
-          new HandleError(`Not enough stock for ${product.name}`, 400)
+          new HandleError(`Not enough stock for ${product.name}`, 400),
         );
       }
       product.stock -= item.quantity;
@@ -133,12 +135,13 @@ export const verifyPaystackPayment = handleAsyncError(
     }
 
     // ✅ Update order after successful payment
-    order.isPaid = true;
-    order.paidAt = Date.now();
     order.paymentInfo = {
       id: paymentData.reference,
       status: paymentData.status,
+      isPaid: true,
     };
+    order.paidAt = Date.now();
+    order.orderStatus = "Confirmed";
 
     await order.save({ validateBeforeSave: false });
 
@@ -147,5 +150,5 @@ export const verifyPaystackPayment = handleAsyncError(
       message: "Payment verified and order confirmed",
       order,
     });
-  }
+  },
 );

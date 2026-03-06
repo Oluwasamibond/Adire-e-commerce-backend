@@ -4,6 +4,7 @@ import { roleBasedAccess, verifyUserAuth } from "../middleware/userAuth.js";
 const router = express.Router();
 
 router.post("/new/order", verifyUserAuth, createOrder)
+router.get("/order/:id", verifyUserAuth, getSingleOrder)
 router.get("/admin/order/:id", verifyUserAuth, roleBasedAccess('admin'), getSingleOrder)
 router.get("/admin/orders", verifyUserAuth, roleBasedAccess('admin'), getAllOrders)
 router.put("/admin/order/:id", verifyUserAuth, roleBasedAccess('admin'), updateOrderStatus)
