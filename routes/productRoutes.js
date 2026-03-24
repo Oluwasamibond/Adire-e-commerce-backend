@@ -22,8 +22,8 @@ router.put("/review", verifyUserAuth, createProductReview);
 router.get("/reviews", getProductReviews);
 router.delete("/review", verifyUserAuth, deleteReview);
 
-router.put("/admin/product/:id", verifyUserAuth, roleBasedAccess("admin"), updateProduct);
-router.delete("/admin/product/:id", verifyUserAuth, roleBasedAccess("admin"), deleteProduct);
+router.put("/admin/product/update/:id", verifyUserAuth, roleBasedAccess("admin"), updateProduct);
+router.delete("/admin/product/delete/:id", verifyUserAuth, roleBasedAccess("admin"), deleteProduct);
 router.get("/:id",  getSingleProduct);
 
 
