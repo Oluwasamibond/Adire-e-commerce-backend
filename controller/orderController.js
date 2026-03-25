@@ -26,6 +26,7 @@ export const createOrder = handleAsyncError(async (req, res, next) => {
     totalPrice,
     paidAt: Date.now(),
     user: req.user._id,
+    orderStatus: paymentInfo.status === "succeeded" ? "Processing" : "Pending",
   });
   res.status(201).json({
     success: true,
@@ -37,7 +38,7 @@ export const createOrder = handleAsyncError(async (req, res, next) => {
 export const getSingleOrder = handleAsyncError(async (req, res, next) => {
   const order = await Order.findById(req.params.id).populate(
     "user",
-    "name email"
+    "name email",
   );
 
   if (!order) {
@@ -86,7 +87,9 @@ export const updateOrderStatus = handleAsyncError(async (req, res, next) => {
     return next(new HandleError("You have already delivered this order", 400));
   }
   await Promise.all(
-    order.orderItems.map((item) => updateQuantity(item.product, item.quantity, item.yard))
+    order.orderItems.map((item) =>
+      updateQuantity(item.product, item.quantity, item.yard),
+    ),
   );
 
   order.orderStatus = req.body.status;
